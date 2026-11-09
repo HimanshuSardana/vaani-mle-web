@@ -1,0 +1,371 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: #efedec;
+  --foreground: #1c1c1a;
+  --card: #ffffff;
+  --card-foreground: #1c1c1a;
+  --popover: #ffffff;
+  --popover-foreground: #1c1c1a;
+  --primary: #171716;
+  --primary-foreground: #ffffff;
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: #6f6e6a;
+  --accent: rgb(0 0 0 / 0.05);
+  --accent-foreground: #1c1c1a;
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: rgb(0 0 0 / 0.06);
+  --input: rgb(0 0 0 / 0.07);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: #fafafa;
+  --sidebar-foreground: #1c1c1a;
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: rgb(0 0 0 / 0.05);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    transition: background-color 150ms ease, color 150ms ease;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* The rail's geometry, as a named rule rather than utility variants so it is
+   easy to verify in DevTools (and cannot be merged away by cn()). */
+.sidebar-panel {
+  transition:
+    width 240ms cubic-bezier(0.65, 0, 0.35, 1),
+    left 240ms cubic-bezier(0.65, 0, 0.35, 1),
+    right 240ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.sidebar-gutter {
+  transition: width 240ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* A keyboard toggle repeats all day, so it runs the same motion at half length. */
+[data-fast] .sidebar-panel,
+[data-fast] .sidebar-gutter {
+  transition-duration: 120ms;
+}
+
+[data-fast] .sidebar-fade {
+  transition-duration: 60ms;
+  transition-delay: 0ms;
+}
+
+/* Landing reveals: hidden only when JS is running, so a no-JS reader still
+   gets the page. */
+html.js .rv {
+  opacity: 0;
+  translate: 0 12px;
+  transition:
+    opacity 0.55s cubic-bezier(0.2, 0.7, 0.2, 1),
+    translate 0.55s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+html.js .rv.in {
+  opacity: 1;
+  translate: 0 0;
+}
+
+.rv-1 {
+  transition-delay: 60ms;
+}
+
+.rv-2 {
+  transition-delay: 120ms;
+}
+
+.rv-3 {
+  transition-delay: 180ms;
+}
+
+/* Navigating from the landing to the chat: the old page leaves left, the new
+   one arrives from the right. Driven by document.startViewTransition. */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) {
+    animation: vt-out-left 280ms cubic-bezier(0.3, 0.7, 0.3, 1) both;
+  }
+
+  ::view-transition-new(root) {
+    animation: vt-in-right 320ms cubic-bezier(0.3, 0.7, 0.3, 1) both;
+  }
+}
+
+@keyframes vt-out-left {
+  to {
+    opacity: 0;
+    transform: translateX(-32px);
+  }
+}
+
+@keyframes vt-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+}
+
+/* Sidebar content fades out ahead of the panel's width change, and comes back
+   only once the panel is most of the way open — otherwise labels vanish and
+   rows snap while the rail is still wide. */
+.sidebar-fade {
+  transition:
+    opacity 120ms ease-out 80ms,
+    visibility 0s 80ms;
+}
+
+/* Header items leave the flex flow as they fade, so the trigger can centre
+   in the rail instead of being pushed out by invisible siblings. */
+[data-collapsible="icon"] .sidebar-fade-inline {
+  position: absolute;
+}
+
+[data-collapsible="icon"] .sidebar-fade {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 80ms ease-out,
+    visibility 0s 80ms;
+}
+
+/* Hover-revealed controls. Written as CSS rather than Tailwind's group-hover
+   variant because that compiles to a zero-specificity :where() selector which
+   loses to the control's own opacity-0 utility. */
+[data-reveal-host]:hover [data-reveal],
+[data-reveal-host]:focus-within [data-reveal],
+[data-reveal][aria-expanded="true"] {
+  opacity: 1;
+}
+
+@media (pointer: coarse) {
+  [data-reveal] {
+    opacity: 1;
+  }
+}
+
+/* Pieces that arrive in place or swap for one another. Transitions rather than
+   keyframes, so adding and removing quickly retargets instead of restarting. */
+.enter-pop {
+  transition:
+    opacity 150ms ease-out,
+    scale 150ms ease-out;
+}
+
+@starting-style {
+  .enter-pop {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+
+.enter-note {
+  transition:
+    opacity 120ms ease-out,
+    transform 120ms ease-out;
+}
+
+@starting-style {
+  .enter-note {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
+/* A caret that blinks fully off reads as a cursor; one that hovers at half
+   opacity reads as a rendering artifact. */
+.caret-inline > :last-child::after,
+.caret-block {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-left: 2px;
+  border-radius: 1px;
+  translate: 0 0.15em;
+  background: currentColor;
+  animation: caret-blink 1s steps(1, end) infinite;
+}
+
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Markdown code blocks scroll horizontally too; keep that bar quiet. */
+pre {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* A new thread arrives under a composer that is already gliding downward, so
+   it fades up instead of snapping into place. */
+.enter-thread {
+  transition:
+    opacity 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@starting-style {
+  .enter-thread {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.js .rv {
+    opacity: 1;
+    translate: 0 0;
+    transition: none;
+  }
+
+  .enter-pop,
+  .enter-note,
+  .caret-inline > :last-child::after,
+  .caret-block {
+    animation: none;
+    transition: none;
+  }
+
+  .enter-thread {
+    transition-duration: 120ms;
+  }
+
+  @starting-style {
+    .enter-thread {
+      transform: none;
+    }
+  }
+}
+
+/* A transition-* class on the sidebar wrapper would override the width and
+   position transitions it ships with, so the panel's colour fade lives here. */
+[data-slot="sidebar-inner"] {
+  transition: background-color 150ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Shortened, never removed: a snap loses the spatial link between the rail
+     and the content it just resized. */
+  [data-slot="sidebar-gap"],
+  [data-slot="sidebar-container"] {
+    transition-duration: 120ms !important;
+  }
+
+  [data-slot="sidebar-group-label"] {
+    transition: none !important;
+  }
+
+  [data-slot="tooltip-content"],
+  [data-slot="dropdown-menu-content"] {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  [data-slot="button"] {
+    transition-property: color, background-color, border-color, box-shadow, opacity;
+  }
+}
