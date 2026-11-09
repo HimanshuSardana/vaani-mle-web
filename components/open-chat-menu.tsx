@@ -20,7 +20,7 @@ export function OpenChatMenu({ googleEnabled }: { googleEnabled: boolean }) {
     return (
       <ChatLink
         className="ml-1 inline-flex h-8 items-center rounded-full bg-primary px-3.5 text-[12.5px] font-medium text-primary-foreground transition-[background-color,transform] duration-150 hover:bg-primary/90 active:scale-[0.97]"
-        href="/chat"
+        href="/"
       >
         Open chat
       </ChatLink>
@@ -43,21 +43,21 @@ export function OpenChatMenu({ googleEnabled }: { googleEnabled: boolean }) {
 
       <DropdownMenuContent align="end" sideOffset={6} className="w-56">
         {data ? (
-          <DropdownMenuItem className="py-1.5 text-[13px]" onClick={() => slideTo("/chat")}>
+            <DropdownMenuItem className="py-1.5 text-[13px]" onClick={() => slideTo("/")}>
             Continue as {firstName ?? "yourself"}
           </DropdownMenuItem>
         ) : (
           <DropdownMenuItem
             className="py-1.5 text-[13px]"
             onClick={() =>
-              authClient.signIn.social({ provider: "google", callbackURL: "/chat" })
+authClient.signIn.social({ provider: "google", callbackURL: "/" })
             }
           >
             Sign in with Google
           </DropdownMenuItem>
         )}
 
-        <DropdownMenuItem className="py-1.5 text-[13px]" onClick={() => slideTo("/chat")}>
+        <DropdownMenuItem className="py-1.5 text-[13px]" onClick={() => slideTo("/")}>
           Guest mode
         </DropdownMenuItem>
       </DropdownMenuContent>

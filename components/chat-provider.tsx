@@ -136,7 +136,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         }));
         if (options.length === 0) return;
 
-        const saved = localStorage.getItem("kraken.model");
+        const saved = localStorage.getItem("vaani.model");
         setModels(options);
         setModelState(
           options.some((option) => option.id === saved) ? saved! : options[0].id,
@@ -441,7 +441,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       model,
       setModel: (id: string) => {
         setModelState(id);
-        localStorage.setItem("kraken.model", id);
+        localStorage.setItem("vaani.model", id);
       },
       startNewChat: () => {
         setMemoriesOpen(false);

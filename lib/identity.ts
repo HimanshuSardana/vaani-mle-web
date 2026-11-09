@@ -1,4 +1,4 @@
-const COOKIE = "kraken_owner";
+const COOKIE = "vaani_owner";
 
 /** Guest memory is scoped to a year-long httpOnly cookie the server owns, so a
  *  reload keeps it without an account. Signing in replaces this with the user id. */

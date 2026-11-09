@@ -28,13 +28,13 @@ export type Chat = {
   pinned?: boolean;
 };
 
-const STORAGE_KEY = "kraken.chats";
+const STORAGE_KEY = "vaani.chats";
 const DAY = 24 * 60 * 60 * 1000;
 
 export const newId = () => crypto.randomUUID();
 
 export function sessionId() {
-  const key = "kraken.session";
+  const key = "vaani.session";
   const existing = localStorage.getItem(key);
   if (existing) return existing;
 

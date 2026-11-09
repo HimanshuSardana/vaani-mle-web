@@ -21,7 +21,7 @@ export function AuthButton({
         type="button"
         className={className}
         onClick={() =>
-          authClient.signIn.social({ provider: "google", callbackURL: "/chat" })
+          authClient.signIn.social({ provider: "google", callbackURL: "/" })
         }
       >
         {signedOutLabel}
