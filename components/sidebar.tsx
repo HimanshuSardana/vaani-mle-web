@@ -1,6 +1,6 @@
 "use client";
 
-import { Brain, Ellipsis, Search, SquarePen } from "lucide-react";
+import { Ellipsis, Search, SquarePen } from "lucide-react";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { useState } from "react";
@@ -59,9 +59,7 @@ export function Sidebar({ googleEnabled }: { googleEnabled: boolean }) {
     activeChat,
     dayStart,
     loaded,
-    memoriesOpen,
     openChat,
-    openMemories,
     startNewChat,
     togglePin,
     deleteChat,
@@ -105,17 +103,6 @@ export function Sidebar({ googleEnabled }: { googleEnabled: boolean }) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                isActive={memoriesOpen}
-                className="h-7 gap-2 px-2 text-[12px] font-normal text-foreground/80 data-active:font-normal data-active:text-foreground"
-                tooltip="Memories"
-                onClick={openMemories}
-              >
-                <Brain className="text-muted-foreground" strokeWidth={1.7} />
-                Memories
-              </SidebarMenuButton>
-            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
 
