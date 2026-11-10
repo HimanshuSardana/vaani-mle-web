@@ -1,6 +1,15 @@
 import { memoryOwner } from "@/lib/auth";
+import { recallEnabled, reasoningEffort, reasoningOff, webSearchEnabled } from "@/lib/config";
 import { recallTurns, recentAsks, rememberTurn } from "@/lib/memory";
 import { resolveModel } from "@/lib/models";
+import {
+  GROUNDING_RULES,
+  NO_PASSAGES,
+  type Passage,
+  passageBlock,
+  toPassages,
+} from "@/lib/rag/prompt";
+import { expandTables, retrieve } from "@/lib/rag/retrieve";
 import { webSearch } from "@/lib/search";
 
 type ChatMessage = { role: string; content: unknown };
@@ -66,24 +75,43 @@ const RECALL = {
 
 const day = (at: number) => new Date(at).toISOString().slice(0, 10);
 
-function promptFor(owner: string) {
-  const asks = recentAsks(owner, 5);
+/** Advertised tools. Empty means the loop below has nothing to call. */
+const TOOLS = [...(webSearchEnabled ? [WEB_SEARCH] : []), ...(recallEnabled ? [RECALL] : [])];
+
+function promptFor(owner: string, passages: Passage[]) {
+  const tools = [
+    webSearchEnabled ? "web search" : null,
+    recallEnabled ? "recall of earlier conversations" : null,
+  ].filter(Boolean);
+
   const lines = [
-    "You are recall, a chat agent with one tool: web search. You can also recall this user's earlier conversations.",
+    "You are vaani, answering questions about three research papers: Attention Is All You Need, Moshi, and H-Net (Dynamic Chunking).",
+    GROUNDING_RULES,
     `Today is ${day(Date.now())} (UTC).`,
+    passages.length
+      ? `Passages:\n\n${passageBlock(passages)}`
+      : NO_PASSAGES,
   ];
 
-  if (asks.length) {
-    lines.push(
-      `Recent questions from this user, oldest first:\n${asks
-        .map((ask) => `- ${day(ask.at)} — ${ask.text.slice(0, 140)}`)
-        .join("\n")}`,
-    );
+  if (tools.length) {
+    lines.splice(1, 0, `You also have these tools: ${tools.join(" and ")}.`);
   }
 
-  lines.push(
-    "Resolve relative dates against today. Use recall for anything that happened before this chat; use web search for anything that may have changed. Do not state what the user asked without checking recall first.",
-  );
+  if (recallEnabled) {
+    const asks = recentAsks(owner, 5);
+
+    if (asks.length) {
+      lines.push(
+        `Recent questions from this user, oldest first:\n${asks
+          .map((ask) => `- ${day(ask.at)} — ${ask.text.slice(0, 140)}`)
+          .join("\n")}`,
+      );
+    }
+
+    lines.push(
+      "Resolve relative dates against today. Use recall for anything that happened before this chat; use web search for anything that may have changed. Do not state what the user asked without checking recall first.",
+    );
+  }
 
   return lines.join("\n\n");
 }
@@ -136,11 +164,18 @@ function sseHeaders() {
 }
 
 /** Forwards deltas to the client while collecting any tool call the model asks for. */
+/** A model that ignores reasoning_effort still streams its thinking; the UI has
+ *  nothing to do with it, so the delta never reaches the client. */
+function stripReasoning(delta: Record<string, unknown>) {
+  const copy = { ...delta };
+  for (const key of ["reasoning", "reasoning_content", "reasoning_details"]) delete copy[key];
+  return copy;
+}
+
 async function relay(
   body: ReadableStream<Uint8Array>,
   emit: (delta: object) => void,
-): Promise<{ content: string; calls: ToolCall[] }> {
-  const reader = body.getReader();
+): Promise<{ content: string; calls: ToolCall[] }> {  const reader = body.getReader();
   const decoder = new TextDecoder();
   const calls = new Map<number, ToolCall>();
   let buffer = "";
@@ -199,7 +234,7 @@ async function relay(
         content += delta.content;
       }
 
-      emit(delta);
+      emit(reasoningOff ? stripReasoning(delta as Record<string, unknown>) : delta);
     }
   }
 
@@ -226,7 +261,7 @@ export async function POST(request: Request) {
 
   const lastTurn = history.at(-1);
   const asked = lastTurn?.role === "user" ? messageText(lastTurn.content) : "";
-  if (asked) rememberTurn({ owner, chat, role: "user", text: asked });
+  if (asked && recallEnabled) rememberTurn({ owner, chat, role: "user", text: asked });
 
   if (!BASE_URL || !API_KEY) {
     const id = `chatcmpl-${crypto.randomUUID().replaceAll("-", "").slice(0, 24)}`;
@@ -279,7 +314,18 @@ export async function POST(request: Request) {
     "x-opencode-session": body.session_id || crypto.randomUUID(),
   };
 
-  const guided = [{ role: "system", content: promptFor(owner) }, ...history];
+  // Providers that honour reasoning_effort stop thinking at the source; the ones
+  // that ignore it are handled by stripping their trace in the relay.
+  const reasoning = reasoningEffort.trim() ? { reasoning_effort: reasoningEffort.trim() } : {};
+  const toolPayload = TOOLS.length ? { tools: TOOLS, tool_choice: "auto" } : {};
+  const upstreamBody = (extra: Record<string, unknown>) =>
+    JSON.stringify({ ...body, ...reasoning, model, ...extra });
+
+  const passages = toPassages(asked ? expandTables(retrieve(asked, { limit: 5 })) : []);
+  const guided = [
+    { role: "system", content: promptFor(owner, passages) },
+    ...history,
+  ];
 
   // A client that brings its own tools is proxied untouched; we only drive the
   // loop for the tool we advertise.
@@ -311,7 +357,7 @@ export async function POST(request: Request) {
         method: "POST",
         cache: "no-store",
         headers: upstreamHeaders,
-        body: JSON.stringify({ ...body, model, stream: false, messages, tools: [WEB_SEARCH] }),
+        body: upstreamBody({ stream: false, messages, ...toolPayload }),
       });
 
       if (!upstream.ok) {
@@ -358,14 +404,7 @@ export async function POST(request: Request) {
         method: "POST",
         cache: "no-store",
         headers: upstreamHeaders,
-        body: JSON.stringify({
-          ...body,
-          model,
-          stream: false,
-          messages,
-          tools: [WEB_SEARCH, RECALL],
-          tool_choice: "auto",
-        }),
+        body: upstreamBody({ stream: false, messages, ...toolPayload }),
       });
 
       if (upstream.ok) {
@@ -376,7 +415,9 @@ export async function POST(request: Request) {
       }
     }
 
-    if (answer) rememberTurn({ owner, chat, role: "assistant", text: answer });
+    if (answer) {
+      if (recallEnabled) rememberTurn({ owner, chat, role: "assistant", text: answer });
+    }
 
     return withOwner(Response.json({
       id: `chatcmpl-${crypto.randomUUID().replaceAll("-", "").slice(0, 24)}`,
@@ -384,6 +425,7 @@ export async function POST(request: Request) {
       created: Math.floor(Date.now() / 1000),
       model,
       choices: [{ index: 0, message: { role: "assistant", content: answer }, finish_reason: "stop" }],
+      rag: { passages },
       usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
     }), setCookie);
   }
@@ -414,14 +456,7 @@ export async function POST(request: Request) {
           method: "POST",
           cache: "no-store",
           headers: upstreamHeaders,
-          body: JSON.stringify({
-            ...body,
-            model,
-            messages,
-            stream: true,
-            tools: [WEB_SEARCH, RECALL],
-            tool_choice: "auto",
-          }),
+          body: upstreamBody({ messages, stream: true, ...toolPayload }),
         });
 
         if (!upstream.ok || !upstream.body) {
@@ -435,6 +470,7 @@ export async function POST(request: Request) {
 
         if (!started) {
           send(chunk({ role: "assistant", content: "" }));
+          send({ ...chunk({}), rag: { passages } });
           started = true;
         }
 
@@ -488,14 +524,7 @@ export async function POST(request: Request) {
           method: "POST",
           cache: "no-store",
           headers: upstreamHeaders,
-          body: JSON.stringify({
-            ...body,
-            model,
-            messages,
-            stream: true,
-            tools: [WEB_SEARCH, RECALL],
-            tool_choice: "auto",
-          }),
+          body: upstreamBody({ messages, stream: true, ...toolPayload }),
         });
 
         if (last.ok && last.body) {
@@ -507,7 +536,9 @@ export async function POST(request: Request) {
       controller.enqueue(encoder.encode("data: [DONE]\n\n"));
       controller.close();
 
-      if (answer.trim()) rememberTurn({ owner, chat, role: "assistant", text: answer });
+      if (answer.trim() && recallEnabled) {
+        rememberTurn({ owner, chat, role: "assistant", text: answer });
+      }
     },
   });
 
