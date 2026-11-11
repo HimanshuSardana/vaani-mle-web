@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight, FileText } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { Mark } from "@/components/mark";
+import { CiteScope, CitationChip } from "@/components/citation-pane";
 import { Markdown } from "@/components/markdown";
 import type { Message, MessageAttachment, ToolCall } from "@/lib/chat";
 
@@ -192,6 +193,16 @@ function Reasoning({ text, live, ms }: { text: string; live: boolean; ms?: numbe
   );
 }
 
+/** Retrieval can hand back more passages than the answer leans on; only the
+ *  ones it actually marks belong in the source list. */
+function cited(message: Message) {
+  const citations = message.citations ?? [];
+  if (!message.content) return citations;
+  return citations.filter((citation) =>
+    new RegExp(`\\[${citation.n}\\]`).test(message.content),
+  );
+}
+
 function AssistantMark() {
   return (
     <Mark className="mt-1 size-4 shrink-0 text-foreground" />
@@ -265,15 +276,21 @@ export function ChatThread({
                 ) : null}
 
                 {message.content ? (
-                  <Markdown streaming={streaming && message.id === last?.id}>
-                    {message.content}
-                  </Markdown>
+                  <CiteScope citations={cited(message)}>
+                    <Markdown streaming={streaming && message.id === last?.id}>
+                      {message.content}
+                    </Markdown>
+                  </CiteScope>
                 ) : (
                   streaming &&
                   message.id === last?.id && (
                     <span className="caret-block" aria-hidden="true" />
                   )
                 )}
+
+                {cited(message).length ? (
+                  <CitationChip citations={cited(message)} />
+                ) : null}
 
                 {message.toolCalls?.length ? <ToolSources calls={message.toolCalls} /> : null}
               </div>

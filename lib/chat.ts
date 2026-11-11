@@ -9,6 +9,20 @@ export type ToolCall = {
   sources?: { title: string; url: string }[];
 };
 
+/** A retrieved passage, kept with the reply so its marker can open the paper. */
+export type Citation = {
+  n: number;
+  chunk_id: string;
+  paper: string;
+  short: string;
+  title: string;
+  section: string;
+  pages: string;
+  page: number;
+  file: string;
+  text: string;
+};
+
 export type Message = {
   id: string;
   role: Role;
@@ -17,6 +31,7 @@ export type Message = {
   reasoning?: string;
   reasoningMs?: number;
   toolCalls?: ToolCall[];
+  citations?: Citation[];
 };
 
 export type Chat = {

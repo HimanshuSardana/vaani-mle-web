@@ -1,17 +1,26 @@
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { CitationLink } from "@/components/citation-pane";
 import { cn } from "@/lib/utils";
 
+/** `[2]` in the prose is a pointer, not text: give it an href the link renderer
+ *  can recognise, without touching any real `[2](url)` the model writes. */
+const cite = (text: string) => text.replace(/\[(\d+)\](?!\()/g, "[$1](#cite-$1)");
+
 const components: Components = {
-  a: ({ node, ...props }) => (
-    <a
-      {...props}
-      target="_blank"
-      rel="noreferrer"
-      className="underline underline-offset-2 hover:text-muted-foreground"
-    />
-  ),
+  a: ({ node, href, ...props }) =>
+    href?.startsWith("#cite-") ? (
+      <CitationLink n={Number(href.slice("#cite-".length))} />
+    ) : (
+      <a
+        {...props}
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        className="underline underline-offset-2 hover:text-muted-foreground"
+      />
+    ),
   p: ({ node, ...props }) => <p {...props} />,
   strong: ({ node, ...props }) => <strong {...props} className="font-semibold" />,
   ul: ({ node, ...props }) => <ul {...props} className="list-disc space-y-1 pl-5" />,
@@ -60,7 +69,7 @@ export function Markdown({ children, streaming = false }: { children: string; st
       )}
     >
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-        {children}
+        {cite(children)}
       </ReactMarkdown>
     </div>
   );

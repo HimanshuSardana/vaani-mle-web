@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import { authClient } from "@/lib/auth-client";
 import {
   type Chat,
+  type Citation,
   type Message,
   type ToolCall,
   loadChats,
@@ -187,7 +188,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     const patchAssistant = (
       chatId: string,
       messageId: string,
-      patch: Partial<Pick<Message, "content" | "reasoning" | "reasoningMs" | "toolCalls">>,
+      patch: Partial<Pick<Message, "content" | "reasoning" | "reasoningMs" | "toolCalls" | "citations">>,
     ) =>
       setChats((previous) =>
         previous.map((chat) =>
@@ -377,6 +378,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
                 reasoning: reasoning.slice(-4000),
                 reasoningMs: Date.now() - thinkingSince,
               });
+            }
+
+            const passages = chunk.rag?.passages as Citation[] | undefined;
+            if (passages?.length) {
+              patchAssistant(chatId, assistantId, { citations: passages });
             }
 
             const tool = chunk.kraken?.tool as ToolCall | undefined;
