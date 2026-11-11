@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element -- local previews are blob URLs, not optimizable assets */
 
 import { ArrowUp, Check, ChevronDown, FileText, ImagePlus, Mic, Plus, X } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   type ClipboardEvent,
   type DragEvent,
@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
+import { PROMPT_ROTATE_MS, PROMPT_SUGGESTIONS } from "@/lib/suggestions";
 import { cn } from "@/lib/utils";
 
 const MAX_ATTACHMENTS = 5;
@@ -54,11 +55,23 @@ export function Composer({ className }: { className?: string }) {
   const [dragging, setDragging] = useState(false);
   const [closingDrop, setClosingDrop] = useState(false);
   const [leaving, setLeaving] = useState<string[]>([]);
+  const [focused, setFocused] = useState(false);
+  const [tick, setTick] = useState(0);
+  const reduce = useReducedMotion();
   const images = useRef<HTMLInputElement>(null);
   const documents = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
   const selected = models.find((option) => option.id === model);
   const full = attachments.length >= MAX_ATTACHMENTS;
+  const empty = !prompt && attachments.length === 0;
+
+  // The suggestion cycles only while the field is empty and unfocused: motion
+  // next to a caret distracts from what is being typed.
+  useEffect(() => {
+    if (!empty || focused) return;
+    const timer = window.setInterval(() => setTick((value) => value + 1), PROMPT_ROTATE_MS);
+    return () => window.clearInterval(timer);
+  }, [empty, focused]);
 
   useEffect(() => {
     if (!rejected) return;
@@ -237,15 +250,35 @@ export function Composer({ className }: { className?: string }) {
         </p>
       )}
 
-      <Textarea
-        rows={2}
-        value={prompt}
-        onChange={(event) => setPrompt(event.target.value)}
-        onKeyDown={onKeyDown}
-        onPaste={onPaste}
-        placeholder="How can I help you today?"
-        className="min-h-[52px] resize-none border-0 bg-transparent px-2 py-1.5 text-[14px] shadow-none placeholder:text-muted-foreground/80 dark:bg-transparent focus-visible:ring-0"
-      />
+      <div className="relative">
+        <Textarea
+          rows={2}
+          value={prompt}
+          onChange={(event) => setPrompt(event.target.value)}
+          onKeyDown={onKeyDown}
+          onPaste={onPaste}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          aria-label="Message"
+          className="min-h-[52px] resize-none border-0 bg-transparent px-2 py-1.5 text-[14px] leading-5 shadow-none dark:bg-transparent focus-visible:ring-0"
+        />
+        {empty && (
+          <div className="pointer-events-none absolute top-1.5 right-2 left-2 h-5 overflow-hidden text-[14px] leading-5">
+            <AnimatePresence initial={false} mode="sync">
+              <motion.span
+                key={tick}
+                initial={reduce ? { opacity: 0 } : { y: "100%", opacity: 0 }}
+                animate={reduce ? { opacity: 1 } : { y: "0%", opacity: 1 }}
+                exit={reduce ? { opacity: 0 } : { y: "-100%", opacity: 0 }}
+                transition={{ duration: 0.28, ease: [0.23, 1, 0.32, 1] }}
+                className="absolute inset-0 truncate text-muted-foreground/80"
+              >
+                {PROMPT_SUGGESTIONS[tick % PROMPT_SUGGESTIONS.length]}
+              </motion.span>
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
       <div className="flex items-center justify-between px-0.5 pb-0.5">
         <DropdownMenu>
           <DropdownMenuTrigger
