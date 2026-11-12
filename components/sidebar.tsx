@@ -81,7 +81,7 @@ export function Sidebar({ googleEnabled }: { googleEnabled: boolean }) {
           size="icon-sm"
           aria-label="Search messages"
           onClick={() => setSearchOpen(true)}
-          className="sidebar-fade sidebar-fade-inline ml-auto size-7 text-muted-foreground hover:bg-accent"
+          className="sidebar-fade ml-auto size-7 text-muted-foreground hover:bg-accent group-data-[collapsible=icon]:hidden"
         >
           <Search strokeWidth={1.7} />
         </Button>
@@ -94,12 +94,12 @@ export function Sidebar({ googleEnabled }: { googleEnabled: boolean }) {
             {nav.map(({ label, icon: Icon }) => (
               <SidebarMenuItem key={label}>
                 <SidebarMenuButton
-                  className="h-7 gap-2 px-2 text-[12px] font-normal text-foreground/80 group-data-[collapsible=icon]:mx-auto"
+                  className="h-7 gap-2 px-2 text-[12px] font-normal text-foreground/80 group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:justify-center"
                   tooltip={label}
                   onClick={label === "New chat" ? startNewChat : undefined}
                 >
                   <Icon className="text-muted-foreground" strokeWidth={1.7} />
-                  {label}
+                  <span className="group-data-[collapsible=icon]:hidden">{label}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
@@ -173,7 +173,7 @@ export function Sidebar({ googleEnabled }: { googleEnabled: boolean }) {
       </SidebarContent>
 
       <SidebarFooter className="flex-row items-center gap-2 px-3 py-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
-        <Avatar size="sm" className="size-5 shrink-0">
+        <Avatar size="sm" className="size-5 shrink-0 group-data-[collapsible=icon]:hidden">
           <AvatarFallback className="bg-primary text-[9px] font-medium text-primary-foreground">
             {initials || "GU"}
           </AvatarFallback>
