@@ -1,109 +1,67 @@
-<img src="app/icon.svg" width="56" height="56" alt="" align="left" hspace="12" vspace="4" />
+# vaani
 
-# recall
+A reading assistant over three papers, with a citation you can open.
 
-**A chat agent with a dated memory.** Ask once, come back next week, and it starts from what you asked before — searching the web again when a fact could have moved, and showing the sources behind every answer.
+Ask a question and the answer is written only from the passages retrieved out of
+the corpus — every claim carries a marker like `[2]`, and clicking it opens the
+paper in a reader beside the chat, scrolled to the page and with the passage
+itself highlighted.
 
-**Live at [recall.himanshu.co](https://recall.himanshu.co)** — the agent is at [/chat](https://recall.himanshu.co/chat), and no account is needed to use it.
+**Corpus**
 
-<br clear="left" />
-
----
-
-## What it does
-
-- **Memory across chats.** Every turn is stored with a timestamp. A `recall` tool lets the model search that log by keyword and by date range, so "what did I ask on 3 November" is a lookup, not a guess.
-- **Search with receipts.** A `web_search` tool asks Tavily, falls back to a self-hosted SearXNG, and filters unrelated pages before they reach the model. Answers end in the sources they used.
-- **A readable agent.** Reasoning streams in and folds away into "Thought for 12s", searches appear as a source strip, and replies render as markdown.
-- **Accounts or guests.** Guests get a cookie-scoped identity and local chats; signing in with Google moves chats to the server.
+- Attention Is All You Need — 1706.03762v7
+- Moshi: A Speech-Text Foundation Model for Real-Time Dialogue — 2410.00037v1
+- Dynamic Chunking for End-to-End Hierarchical Sequence Modeling — 2507.07955v2
 
 ## How it works
 
-Each request to `/v1/chat/completions` assembles a prompt from today's date, the last five questions and the current transcript, then runs a small tool loop:
+1. **Retrieve** — `lib/rag/retrieve.ts` builds a BM25 index over 317 chunks once
+   per process, weights section headings, filters passages that score far below
+   the best hit, caps how many come from one paper, and honours a paper named in
+   the question ("the Transformer", Moshi, H-Net).
+2. **Answer** — `lib/rag/prompt.ts` hands the numbered passages to a model on the
+   opencode go gateway with one instruction: those passages are the only source,
+   cite them, and say so when they do not answer the question.
+3. **Read** — the reply keeps its passages, so `[2]` and the "N passages" chip open
+   `components/citation-pane.tsx`: a resizable second panel that renders the PDF
+   with pdf.js (`components/pdf-pane.tsx`) and marks the cited lines.
 
-```text
-prompt ──▶ model ──▶ tool_calls? ──▶ recall    (dated log, keyword + date range)
-                        │         └─▶ web_search (Tavily, then SearXNG)
-                        └──▶ stream deltas ──▶ sources strip ──▶ prose
-```
+## Endpoints
 
-A turn may call a tool more than once. When the loop is done the assistant's answer is stored as a memory, which is what makes the next conversation start further along.
+| Route | What it does |
+| --- | --- |
+| `POST /v1/chat/completions` | the chat itself: retrieves, answers, streams `rag.passages` for the reader |
+| `POST /api/rag/chat` | the same retrieval and answer without chat storage; `stream: false` returns JSON |
+| `GET /api/rag/search?q=` | retrieval only, no model call — for inspecting what the answer would see |
+| `GET /api/rag/models` | the chat models the gateway accepts |
 
-## Getting started
-
-Use the hosted instance at **[recall.himanshu.co](https://recall.himanshu.co)**, or run it locally — requires **Node 22+** (better-sqlite3 is native).
+## Running it
 
 ```bash
 npm install
-cp .env.example .env.local   # fill in the keys below
+cp .env.example .env      # then fill in the keys below
 npm run dev
 ```
 
-Open <http://localhost:3000> for the landing page or <http://localhost:3000/chat> for the agent. The SQLite schema is created on first boot at `data/recall.db`, so there is nothing to migrate.
-
-> [!NOTE]
-> The app runs with only a model key. Without `TAVILY_API_KEY` search falls back to SearXNG; without Google credentials the sign-in entry point is inert and everything still works as a guest.
-
-## Configuration
-
-All keys live in `.env.example`.
-
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `OPENAI_API_KEY` | yes | Key for an OpenAI-compatible provider |
-| `OPENAI_BASE_URL` | yes | Base URL, e.g. `https://api.openai.com/v1` |
-| `OPENAI_MODEL` | no | Default model when a request omits one |
-| `TAVILY_API_KEY` | no | Primary web search |
-| `SEARXNG_URL`, `SEARXNG_API_KEY` | no | Fallback search instance |
-| `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` | for auth | better-auth session signing |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | for auth | Google OAuth |
-| `DATABASE_PATH` | no | SQLite file, defaults to `data/recall.db` |
-
-The model picker is limited to the two entries in [`lib/models.ts`](lib/models.ts); anything else is clamped to the default.
-
-## API
-
-The chat endpoint is OpenAI-compatible, so any OpenAI client can talk to it.
-
-| Route | Description |
+| Variable | Purpose |
 | --- | --- |
-| `POST /v1/chat/completions` | Streaming chat with the tool loop; accepts `stream` |
-| `GET /v1/models` | The models the picker offers |
-| `POST /v1/chat/title` | Names a conversation from its first message |
-| `GET /v1/memory`, `DELETE /v1/memory` | List or clear stored memories |
-| `GET /api/chats`, `PUT /api/chats`, `DELETE /api/chats` | Signed-in chat storage |
-| `/api/auth/*` | better-auth handlers |
+| `OPENCODE_API_KEY` | opencode go key; every request also sends an `x-opencode-session` header |
+| `OPENCODE_BASE_URL` | defaults to `https://opencode.ai/inference/go/openai/v1` |
+| `RAG_MODEL` | model id, defaults to `deepseek-v4.1-flash` |
+| `ENABLE_WEB_SEARCH` | `1` to let the chat search the web; off by default |
+| `ENABLE_MEMORY_RECALL` | `1` to store and recall earlier conversations; off by default |
+| `REASONING_EFFORT` | `none` (default) keeps reasoning models from spending tokens thinking |
 
-## Project layout
+## Layout
 
-```text
-app/
-  page.tsx                 landing page
-  chat/                    the agent
-  v1/                      OpenAI-compatible routes (chat, models, title, memory)
-  api/                     auth handlers and signed-in chat storage
-components/
-  chat-*.tsx               provider, surface, thread
-  composer.tsx             prompt box, attachments, model picker
-  command-palette.tsx      ⌘K search over every message
-  memories.tsx             what was stored, and forgetting it
-  ui/                      shadcn components
-db/                        drizzle schema and SQLite connection
-lib/
-  auth.ts, auth-client.ts  better-auth
-  memory.ts                turns, recall, forget
-  search.ts                Tavily with SearXNG fallback
-  models.ts                the model allowlist
+```
+app/v1/chat/completions   chat + retrieval + streaming
+app/api/rag/*             retrieval-first HTTP API
+components/citation-pane  the split and the reader's state
+components/pdf-pane       pdf.js page canvases and the passage highlight
+lib/rag                   corpus, BM25, prompt, opencode client
+lib/rag/corpus.jsonl      317 chunks with paper, section and page
 ```
 
-## Design notes
-
-How the agent loop, the memory model and the storage split were decided — and what is deliberately missing — is written up in [DESIGN.md](DESIGN.md).
-
-## Notes
-
-- **Guest identity** is a year-long `httpOnly` cookie, so memory survives a reload without an account; signing in replaces it with your user id.
-- **Storage split.** Guests keep chats in `localStorage`; signed-in users' chats live in SQLite. Guest chats are not imported on sign-in yet.
-- **Search is filtered, not trusted.** Results that share no term with the query are dropped, and an answer that could not be verified says so.
-
-Built as a submission for the [minimi](https://minimi.so) software intern challenge.
+`public/pdf.worker.min.mjs` is copied from `node_modules/pdfjs-dist/build/` and has
+to be re-copied whenever that package updates.
