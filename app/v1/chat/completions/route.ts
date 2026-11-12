@@ -1,7 +1,7 @@
 import { memoryOwner } from "@/lib/auth";
 import { recallEnabled, reasoningEffort, reasoningOff, webSearchEnabled } from "@/lib/config";
 import { recallTurns, recentAsks, rememberTurn } from "@/lib/memory";
-import { resolveModel } from "@/lib/models";
+import { anyProviderConfigured, providerFor, resolveModel } from "@/lib/models";
 import {
   GROUNDING_RULES,
   NO_PASSAGES,
@@ -25,8 +25,6 @@ type ChatRequest = {
 
 type ToolCall = { id: string; name: string; arguments: string };
 
-const BASE_URL = process.env.OPENAI_BASE_URL?.replace(/\/+$/, "");
-const API_KEY = process.env.OPENAI_API_KEY;
 
 const FINAL_NUDGE =
   "Searching is done. Answer the original question now, in prose, using the results above. Do not call any tool.";
@@ -152,7 +150,7 @@ function mockReply(messages: ChatMessage[]) {
   return [
     "This is a mock reply, no model is wired up yet.",
     gist ? `You said: "${gist}".` : "I could not find a question in that request.",
-    "Set OPENAI_API_KEY and OPENAI_BASE_URL to talk to a real provider.",
+    "Set OPENAI_API_KEY (opencode go) or GROQ_API_KEY (Groq) to talk to a real provider.",
   ].join(" ");
 }
 
@@ -253,7 +251,9 @@ export async function POST(request: Request) {
     return invalid("`messages` must be a non-empty array.");
   }
 
-  const model = resolveModel(body.model);
+  const picked = resolveModel(body.model);
+  const model = picked.id;
+  const provider = providerFor(picked);
   const history: ChatMessage[] = body.messages;
 
   const { owner, cookie: setCookie } = await memoryOwner(request);
@@ -263,7 +263,7 @@ export async function POST(request: Request) {
   const asked = lastTurn?.role === "user" ? messageText(lastTurn.content) : "";
   if (asked && recallEnabled) rememberTurn({ owner, chat, role: "user", text: asked });
 
-  if (!BASE_URL || !API_KEY) {
+  if (!provider.key || !anyProviderConfigured()) {
     const id = `chatcmpl-${crypto.randomUUID().replaceAll("-", "").slice(0, 24)}`;
     const created = Math.floor(Date.now() / 1000);
     const reply = mockReply(body.messages);
@@ -308,18 +308,47 @@ export async function POST(request: Request) {
     return withOwner(new Response(stream, { headers: sseHeaders() }), setCookie);
   }
 
-  const upstreamHeaders = {
+  // The go gateway routes on the session header; Groq does not accept it.
+  const upstreamHeaders: Record<string, string> = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${API_KEY}`,
-    "x-opencode-session": body.session_id || crypto.randomUUID(),
+    Authorization: `Bearer ${provider.key}`,
   };
+  if (provider.session) {
+    upstreamHeaders["x-opencode-session"] = body.session_id || crypto.randomUUID();
+  }
 
   // Providers that honour reasoning_effort stop thinking at the source; the ones
   // that ignore it are handled by stripping their trace in the relay.
-  const reasoning = reasoningEffort.trim() ? { reasoning_effort: reasoningEffort.trim() } : {};
+  const wanted = reasoningEffort.trim();
+  const reasoning = wanted
+    ? { reasoning_effort: provider.reasoningFloor && wanted === "none" ? "low" : wanted }
+    : {};
   const toolPayload = TOOLS.length ? { tools: TOOLS, tool_choice: "auto" } : {};
-  const upstreamBody = (extra: Record<string, unknown>) =>
-    JSON.stringify({ ...body, ...reasoning, model, ...extra });
+
+  // Our request body carries fields the OpenAI schema does not have (chat_id,
+  // session_id) and Groq rejects anything it does not recognise, so only
+  // standard fields are forwarded.
+  const PASSTHROUGH = [
+    "messages",
+    "stream",
+    "temperature",
+    "top_p",
+    "max_tokens",
+    "max_completion_tokens",
+    "stop",
+    "seed",
+    "response_format",
+  ] as const;
+
+  const upstreamBody = (extra: Record<string, unknown>) => {
+    const standard: Record<string, unknown> = {};
+    for (const key of PASSTHROUGH) {
+      if (key in body && (body as Record<string, unknown>)[key] !== undefined) {
+        standard[key] = (body as Record<string, unknown>)[key];
+      }
+    }
+    return JSON.stringify({ ...standard, ...reasoning, model, ...extra });
+  };
 
   const passages = toPassages(asked ? expandTables(retrieve(asked, { limit: 5 })) : []);
   const guided = [
@@ -330,7 +359,7 @@ export async function POST(request: Request) {
   // A client that brings its own tools is proxied untouched; we only drive the
   // loop for the tool we advertise.
   if (body.tools) {
-    const upstream = await fetch(`${BASE_URL}/chat/completions`, {
+    const upstream = await fetch(`${provider.baseUrl}/chat/completions`, {
       method: "POST",
       cache: "no-store",
       headers: upstreamHeaders,
@@ -353,7 +382,7 @@ export async function POST(request: Request) {
     let answer = "";
 
     for (let round = 0; round < 3; round += 1) {
-      const upstream = await fetch(`${BASE_URL}/chat/completions`, {
+      const upstream = await fetch(`${provider.baseUrl}/chat/completions`, {
         method: "POST",
         cache: "no-store",
         headers: upstreamHeaders,
@@ -400,7 +429,7 @@ export async function POST(request: Request) {
       // nudge turn is what actually ends the loop.
       messages.push({ role: "user", content: FINAL_NUDGE });
 
-      const upstream = await fetch(`${BASE_URL}/chat/completions`, {
+      const upstream = await fetch(`${provider.baseUrl}/chat/completions`, {
         method: "POST",
         cache: "no-store",
         headers: upstreamHeaders,
@@ -452,7 +481,7 @@ export async function POST(request: Request) {
       let answer = "";
 
       for (let round = 0; round < 3; round += 1) {
-        const upstream = await fetch(`${BASE_URL}/chat/completions`, {
+        const upstream = await fetch(`${provider.baseUrl}/chat/completions`, {
           method: "POST",
           cache: "no-store",
           headers: upstreamHeaders,
@@ -520,7 +549,7 @@ export async function POST(request: Request) {
       if (!answered) {
         messages.push({ role: "user", content: FINAL_NUDGE });
 
-        const last = await fetch(`${BASE_URL}/chat/completions`, {
+        const last = await fetch(`${provider.baseUrl}/chat/completions`, {
           method: "POST",
           cache: "no-store",
           headers: upstreamHeaders,
