@@ -73,7 +73,7 @@ export function ChatSurface() {
         >
           {hero ? (
             <h1 className="mb-5 text-[28px] font-normal tracking-[-0.01em] text-foreground">
-              Hello, Guest
+              Hello, <span className="vaani-shimmer">Vaani.ai</span> recruiter
             </h1>
           ) : (
             <ChatThread

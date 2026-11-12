@@ -369,3 +369,39 @@ pre {
     transition-property: color, background-color, border-color, box-shadow, opacity;
   }
 }
+/* The empty-state greeting: "Vaani.ai" carries a purple sheen that drifts
+   across the word. Constant motion, so it runs linear; reduced-motion keeps the
+   colour and drops the drift. Named uniquely — `.shimmer` is already taken. */
+.vaani-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    #7c3aed 0%,
+    #a855f7 22%,
+    #d8b4fe 38%,
+    #f5f3ff 50%,
+    #d8b4fe 62%,
+    #a855f7 78%,
+    #7c3aed 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: vaani-shimmer 3.6s linear infinite;
+}
+
+@keyframes vaani-shimmer {
+  from {
+    background-position: -200% center;
+  }
+  to {
+    background-position: 200% center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vaani-shimmer {
+    animation: none;
+    background-position: 50% center;
+  }
+}
