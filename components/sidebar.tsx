@@ -188,7 +188,7 @@ export function Sidebar({ googleEnabled }: { googleEnabled: boolean }) {
             />
           )}
         </div>
-        <ThemeToggle className="ml-auto" />
+        <ThemeToggle className="ml-auto group-data-[collapsible=icon]:ml-0" />
       </SidebarFooter>
       <SidebarRail />
 
