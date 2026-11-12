@@ -15,7 +15,7 @@ import {
   titleFrom,
 } from "@/lib/chat";
 
-type ModelOption = { id: string; label: string };
+type ModelOption = { id: string; label: string; provider?: string };
 
 type ChatContextValue = {
   chats: Chat[];
@@ -128,12 +128,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
     fetch("/v1/models")
       .then((response) => response.json())
-      .then((payload: { data?: { id: string; name?: string }[] }) => {
+      .then((payload: { data?: { id: string; name?: string; provider?: string }[] }) => {
         if (cancelled) return;
 
         const options = (payload.data ?? []).map((entry) => ({
           id: entry.id,
           label: entry.name ?? entry.id,
+          provider: entry.provider,
         }));
         if (options.length === 0) return;
 

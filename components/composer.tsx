@@ -353,10 +353,15 @@ export function Composer({ className }: { className?: string }) {
               {models.map((option) => (
                 <DropdownMenuItem
                   key={option.id}
-                  className="gap-2 text-[13px]"
+                  className="gap-1.5 text-[13px]"
                   onClick={() => setModel(option.id)}
                 >
                   <span className="truncate">{option.label}</span>
+                  {option.provider && (
+                    <span className="shrink-0 text-[10.5px] text-muted-foreground/80">
+                      {option.provider}
+                    </span>
+                  )}
                   {option.id === model && (
                     <Check className="ml-auto size-3.5 text-muted-foreground" />
                   )}
