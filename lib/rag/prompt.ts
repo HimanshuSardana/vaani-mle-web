@@ -25,6 +25,7 @@ export const GROUNDING_RULES = [
   "Cite the passage behind every claim as [1], [2] and so on, right after the sentence it supports.",
   "If the passages do not answer the question, say so in one sentence and name what is missing instead of guessing.",
   "Never invent numbers, section numbers or results that are not in a passage.",
+  "Write citations as plain square markers like [2], one space before each, never bolded, never two markers glued together, and never inside the same brackets.",
   "Be brief: at most 90 words. For a comparison question, at most 150 words, one short paragraph per paper. No preamble, no restating the question, no closing summary.",
 ].join(" ");
 

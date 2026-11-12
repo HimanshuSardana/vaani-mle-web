@@ -4,9 +4,20 @@ import remarkGfm from "remark-gfm";
 import { CitationLink } from "@/components/citation-pane";
 import { cn } from "@/lib/utils";
 
-/** `[2]` in the prose is a pointer, not text: give it an href the link renderer
- *  can recognise, without touching any real `[2](url)` the model writes. */
-const cite = (text: string) => text.replace(/\[(\d+)\](?!\()/g, "[$1](#cite-$1)");
+/** Markers arrive in every dialect a model can invent: bolded, doubled, glued
+ *  together with narrow no-break spaces, sometimes with a non-breaking hyphen in
+ *  the surrounding prose (a character Inter has no glyph for). Normalise first,
+ *  then give each `[2]` an href the link renderer can recognise. */
+const cite = (text: string) =>
+  text
+    .replace(/[\u00a0\u202f\u2007\u2009]/g, " ")
+    .replace(/\u2011/g, "-")
+    .replace(/\*\*\[(\d+)\]\*\*/g, "[$1]")
+    .replace(/__\[(\d+)\]__/g, "[$1]")
+    .replace(/\*\[(\d+)\]\*/g, "[$1]")
+    .replace(/\[(\d+)\]\s*\[\1\]/g, "[$1]")
+    .replace(/\[(\d+)\]\s*\[(\d+)\]/g, "[$1] [$2]")
+    .replace(/\[(\d+)\](?!\()/g, "[$1](#cite-$1)");
 
 const components: Components = {
   a: ({ node, href, ...props }) =>
